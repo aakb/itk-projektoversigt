@@ -21,6 +21,12 @@ class HarvestApiService extends BaseApiService {
     }
 
     public function update() {
+    	$this->clearSeenOnlastSync();
+    	$this->updateAllEndpoints();
+    	$this->removeDeleted();
+    }
+
+    private function updateAllEndpoints() {
     	$endpoints = [
     		'users' => 'AppBundle:Harvest\User',
     		'clients' => 'AppBundle:Harvest\Client',
@@ -51,6 +57,42 @@ class HarvestApiService extends BaseApiService {
 	    foreach ($endpoints as $endpoint => $entityName) {
 		    $this->updateEndpoint(self::API_BASE_PATH.$endpoint, $endpoint, $entityName);
 	    }
+    }
+
+    private function clearSeenOnlastSync() {
+	    $entityNames = [
+		    'AppBundle:Harvest\TimeEntry',
+		    'AppBundle:Harvest\Invoice',
+		    'AppBundle:Harvest\ProjectAssignment',
+		    'AppBundle:Harvest\UserAssignment',
+		    'AppBundle:Harvest\TaskAssignment',
+		    'AppBundle:Harvest\Task',
+		    'AppBundle:Harvest\Project',
+		    'AppBundle:Harvest\Client',
+		    'AppBundle:Harvest\User',
+	    ];
+
+	    foreach ($entityNames as $entityName) {
+	        $this->em->getRepository( $entityName )->clearSeenOnLastSync();
+	    }
+    }
+
+    private function removeDeleted() {
+		$entityNames = [
+			'AppBundle:Harvest\TimeEntry',
+			'AppBundle:Harvest\Invoice',
+			'AppBundle:Harvest\ProjectAssignment',
+			'AppBundle:Harvest\UserAssignment',
+			'AppBundle:Harvest\TaskAssignment',
+			'AppBundle:Harvest\Task',
+			'AppBundle:Harvest\Project',
+			'AppBundle:Harvest\Client',
+			'AppBundle:Harvest\User',
+		];
+
+		foreach ($entityNames as $entityName) {
+	        $this->em->getRepository( $entityName )->deleteAllNotSeenOnLastSync();
+		}
     }
 
 }

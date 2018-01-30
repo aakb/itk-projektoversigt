@@ -2,8 +2,10 @@
 
 namespace AppBundle\Entity\Harvest;
 
+use AppBundle\Traits\ExistingEntity;
 use Doctrine\ORM\Mapping as ORM;
 use AppBundle\Traits\TimestampableEntity;
+use AppBundle\Entity\Harvest\Client as Client;
 
 /**
  * TimeEntry
@@ -13,7 +15,7 @@ use AppBundle\Traits\TimestampableEntity;
  */
 class TimeEntry
 {
-	use TimestampableEntity;
+	use TimestampableEntity, ExistingEntity;
 
     /**
      * @var int

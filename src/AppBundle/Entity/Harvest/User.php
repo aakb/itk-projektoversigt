@@ -2,6 +2,7 @@
 
 namespace AppBundle\Entity\Harvest;
 
+use AppBundle\Traits\ExistingEntity;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
 use AppBundle\Traits\TimestampableEntity;
@@ -14,7 +15,7 @@ use AppBundle\Traits\TimestampableEntity;
  */
 class User
 {
-	use TimestampableEntity;
+	use TimestampableEntity, ExistingEntity;
 
     /**
      * @var int

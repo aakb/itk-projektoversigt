@@ -2,6 +2,7 @@
 
 namespace AppBundle\Entity\Harvest;
 
+use AppBundle\Traits\ExistingEntity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use AppBundle\Traits\TimestampableEntity;
@@ -14,7 +15,7 @@ use AppBundle\Traits\TimestampableEntity;
  */
 class TaskAssignment
 {
-	use TimestampableEntity;
+	use TimestampableEntity, ExistingEntity;
 
     /**
      * @var int

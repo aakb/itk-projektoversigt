@@ -31,7 +31,6 @@ abstract class BaseApiService
 	}
 
 	protected function updateEndpoint(string $apiPath, string $jsonPath, string $entityName) {
-
 		$res = $this->getPagedData($this->client, $apiPath, $jsonPath, 'links.next');
 		$this->updateEntities($entityName, $res['records']);
 
@@ -61,14 +60,22 @@ abstract class BaseApiService
             $res['nextUrl'] = $content->get('$.'.$next_url_path)[0];
 
             return $res;
-            }
+        }
 
         throw new \Exception('$next_url cannot be empty');
     }
 
-    protected function updateEntities($entityName, $entities) {
-	    foreach ( $entities as $record ) {
-		    $entity = $this->em->getRepository( $entityName )->find( $record['id'] );
+    protected function updateEntities($entityName, $records) {
+		$ids = array_column($records, 'id');
+		$result = $this->em->getRepository( $entityName )->findBy( ['id' => $ids] );
+
+		$entities = [];
+		foreach ($result as $item) {
+			$entities[$item->getId()] = $item;
+		}
+
+	    foreach ( $records as $record ) {
+		    $entity = array_key_exists($record['id'], $entities) ? $entities[$record['id']] : null;
 
 		    if ( ! $entity ) {
 			    $entityInfo = $this->em->getClassMetadata( $entityName );
@@ -120,6 +127,10 @@ abstract class BaseApiService
                 $accessor->setValue($entity, $prop, $value);
             }
         }
+
+	    if($accessor->isWritable($entity, 'seenOnLastSync')) {
+		    $accessor->setValue($entity, 'seenOnLastSync', true);
+	    }
     }
 
     private function convertToCamelCase($input, $separator = '_', $capitalizeFirstCharacter = false)

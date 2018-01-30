@@ -2,6 +2,7 @@
 
 namespace AppBundle\Entity\Harvest;
 
+use AppBundle\Traits\ExistingEntity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\ManyToMany;
@@ -15,7 +16,7 @@ use AppBundle\Traits\TimestampableEntity;
  */
 class Project
 {
-	use TimestampableEntity;
+	use TimestampableEntity, ExistingEntity;
 
     /**
      * @var int
