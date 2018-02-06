@@ -12,9 +12,12 @@ use Doctrine\Common\Collections\ArrayCollection;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Promise\PromiseInterface;
+use Psr\Http\Message\ResponseInterface;
 
 use JsonPath\JsonObject;
 
+use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\PropertyAccess\PropertyAccess;
 use Doctrine\ORM\EntityManager;
 use Doctrine\Common\Annotations\AnnotationReader;
@@ -30,34 +33,79 @@ abstract class BaseApiService
 		$this->em = $em;
 	}
 
-	protected function updateEndpoint(string $apiPath, string $jsonPath, string $entityName) {
-		$res = $this->getPagedData($this->client, $apiPath, $jsonPath, 'links.next');
+	protected function updateEndpoint(string $apiPath, string $jsonPath, string $nextUrlPath, string $pageNumberPath, string $totalPageNumberPath, string $entityName, ProgressBar $progressBar = null) {
+		$res = $this->getPagedData($this->client, $apiPath, $jsonPath, $nextUrlPath, $pageNumberPath, $totalPageNumberPath);
 		$this->updateEntities($entityName, $res['records']);
 
-		if(!empty($res['nextUrl'])) {
-			$this->updateEndpoint($res['nextUrl'], $jsonPath, $entityName);
+		if($res['totalPageNumber'] > 1) {
+			$client = $this->client;
+			$pageUrls = [];
+
+			for($page = 2; $page <= $res['totalPageNumber']; $page++ ) {
+				$pageUrls[] = $apiPath.'?'.$pageNumberPath.'='.$page;
+			}
+
+			$requests = function($pageUrls) use ($client) {
+				foreach ($pageUrls as $url) {
+					yield $client->get($url);
+				}
+			};
+
+			$total = $res['totalPageNumber'];
+			$page = 2;
+
+			/** @var PromiseInterface $p */
+			$p = \GuzzleHttp\Promise\each_limit(
+				$requests($pageUrls),
+				20,
+				function(ResponseInterface $response, $index) use (&$page, $total, $jsonPath, $entityName, $progressBar) {
+					// https://github.com/8p/GuzzleBundle/issues/48
+					$response->getBody()->rewind();
+
+					$content = new JsonObject($response->getBody()->getContents());
+					$records = $content->get( '$.' . $jsonPath . '[*]');
+
+					$this->updateEntities($entityName, $records);
+
+					if($progressBar) {
+						$progressBar->advance();
+						$progressBar->setMessage( $jsonPath . ': ' . $page . '/' . $total . ' pages fetched.' );
+					}
+
+					$page++;
+				},
+				function($reason, $index) use (&$page, $total, $jsonPath, $entityName, $progressBar) {
+					$page++;
+
+					$progressBar->setMessage( $jsonPath . ': ' . $page . '/' . $total . ' pages failed.' );
+				}
+			);
+			$p->wait();
 		}
+
 	}
 
-    protected function getPagedData($client, $next_url, $records_path, $next_url_path)
+    protected function getPagedData($client, $nextUrl, $recordsPath, $nextUrlPath, $pageNumberPath, $totalPageNumberPath)
     {
-        if ( ! empty($next_url)) {
+        if ( ! empty($nextUrl)) {
             try {
-                $response = $client->get($next_url);
+                $response = $client->get($nextUrl);
             } catch (RequestException $e) {
                 echo Psr7\str($e->getRequest());
                 if ($e->hasResponse()) {
                     echo Psr7\str($e->getResponse());
                 }
-                throw new \Exception('Network Error retrieving: '.$next_url);
+                throw new \Exception( 'Network Error retrieving: ' . $nextUrl);
             }
 
             // https://github.com/8p/GuzzleBundle/issues/48
             $response->getBody()->rewind();
 
             $content = new JsonObject($response->getBody()->getContents());
-            $res['records'] = $content->get('$.'.$records_path.'[*]');
-            $res['nextUrl'] = $content->get('$.'.$next_url_path)[0];
+            $res['records'] = $content->get( '$.' . $recordsPath . '[*]');
+            $res['nextUrl'] = $content->get( '$.' . $nextUrlPath)[0];
+            $res['pageNumber'] = $content->get( '$.' . $pageNumberPath)[0];
+            $res['totalPageNumber'] = $content->get( '$.' . $totalPageNumberPath)[0];
 
             return $res;
         }

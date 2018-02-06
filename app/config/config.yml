@@ -103,15 +103,15 @@ api_platform:
 eight_points_guzzle:
     clients:
         harvest_api:
-            base_url: "https://api.harvestapp.com"
+            base_url: '%harvest_base_url%'
 
             # custom headers
             options:
                 headers:
-                    Accept: "application/json"
-                    Harvest-Account-ID: "231007"
-                    Authorization: "Bearer 166576.pt.H70JIffx7HGnDQoVUJ8ruKiRbYgZlpuAdhjtWhGVbHecevyDrKkMVpjoKj6-DkcNWfQTyMu2QiXpSKqMO-u6yg"
-                    User-Agent: "ITK Projektoversigter"
+                    Accept: 'application/json'
+                    Harvest-Account-ID: '%harvest_account_id%'
+                    Authorization: '%harvest_auth_token%'
+                    User-Agent: '%harvest_user_agent%'
 
 stof_doctrine_extensions:
     orm:

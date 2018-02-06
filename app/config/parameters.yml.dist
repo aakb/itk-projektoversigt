@@ -21,3 +21,7 @@ parameters:
     cors_allow_origin: http://localhost
 
     varnish_urls: [http://varnish]
+
+    harvest_account_id: harvest_id
+    harvest_auth_token:  harvest_auth
+    harvest_user_agent: "ITK Projektoversigter"

@@ -10,20 +10,40 @@ namespace AppBundle\Service;
 
 use Doctrine\ORM\EntityManager;
 use GuzzleHttp\Client;
+use Symfony\Component\Console\Helper\ProgressBar;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class HarvestApiService extends BaseApiService {
 
 	const API_BASE_PATH = '/api/v2/';
+
+	private $progressBar;
+	private $output;
 
     public function __construct(Client $client, EntityManager $em)
     {
     	parent::__construct($client, $em);
     }
 
-    public function update() {
-    	$this->clearSeenOnlastSync();
+    public function update(OutputInterface $output = null) {
+    	$this->output = $output;
+
+    	if($output) {
+		    $this->progressBar = new ProgressBar($output);
+		    $this->progressBar->setFormat('%bar% %elapsed% (%memory%) - %message%');
+		    $this->setMessage('Starting');
+		    $this->progressBar->start();
+	    }
+
+	    $this->setMessage('Starting...');
+		$this->clearSeenOnlastSync();
+	    $this->advance();
+
     	$this->updateAllEndpoints();
+
+	    $this->setMessage('Remove all delete entries');
     	$this->removeDeleted();
+	    $this->advance();
     }
 
     private function updateAllEndpoints() {
@@ -35,18 +55,35 @@ class HarvestApiService extends BaseApiService {
 	    ];
 
     	foreach ($endpoints as $endpoint => $entityName) {
-    		$this->updateEndpoint(self::API_BASE_PATH.$endpoint, $endpoint, $entityName);
+    		$this->updateEndpoint(self::API_BASE_PATH.$endpoint, $endpoint, 'links.next', 'page', 'total_pages', $entityName, $this->progressBar);
+
+    		$this->advance();
 	    }
 
 	    $projects = $this->em->getRepository('AppBundle:Harvest\Project')->findAll();
+    	$total = count($projects);
+    	$count = 1;
 	    foreach ($projects as $project) {
-		    $this->updateEndpoint(self::API_BASE_PATH.'projects/'.$project->getId().'/task_assignments', 'task_assignments', 'AppBundle:Harvest\TaskAssignment');
-		    $this->updateEndpoint(self::API_BASE_PATH.'projects/'.$project->getId().'/user_assignments', 'user_assignments', 'AppBundle:Harvest\UserAssignment');
+		    $this->setMessage('Updating assignments for: '.$count.'/'.$total.' projects.');
+		    $this->updateEndpoint(self::API_BASE_PATH.'projects/'.$project->getId().'/task_assignments', 'task_assignments', 'links.next', 'page',
+			    'total_pages','AppBundle:Harvest\TaskAssignment');
+		    $this->updateEndpoint(self::API_BASE_PATH.'projects/'.$project->getId().'/user_assignments', 'user_assignments', 'links.next', 'page',
+			    'total_pages', 'AppBundle:Harvest\UserAssignment');
+
+		    $this->advance();
+		    $count++;
 	    }
 
 	    $users = $this->em->getRepository('AppBundle:Harvest\User')->findAll();
+	    $total = count($users);
+	    $count = 1;
 	    foreach ($users as $user) {
-		    $this->updateEndpoint(self::API_BASE_PATH.'users/'.$user->getId().'/project_assignments', 'project_assignments', 'AppBundle:Harvest\ProjectAssignment');
+		    $this->setMessage('Updating assignments for: '.$count.'/'.$total.' users.');
+		    $this->updateEndpoint(self::API_BASE_PATH.'users/'.$user->getId().'/project_assignments', 'project_assignments', 'task_assignments', 'links.next', 'page',
+			    'total_pages','AppBundle:Harvest\ProjectAssignment');
+
+		    $this->advance();
+		    $count++;
 	    }
 
 	    $endpoints = [
@@ -56,6 +93,8 @@ class HarvestApiService extends BaseApiService {
 
 	    foreach ($endpoints as $endpoint => $entityName) {
 		    $this->updateEndpoint(self::API_BASE_PATH.$endpoint, $endpoint, $entityName);
+
+		    $this->advance();
 	    }
     }
 
@@ -74,6 +113,8 @@ class HarvestApiService extends BaseApiService {
 
 	    foreach ($entityNames as $entityName) {
 	        $this->em->getRepository( $entityName )->clearSeenOnLastSync();
+
+//		    $this->advance();
 	    }
     }
 
@@ -92,7 +133,28 @@ class HarvestApiService extends BaseApiService {
 
 		foreach ($entityNames as $entityName) {
 	        $this->em->getRepository( $entityName )->deleteAllNotSeenOnLastSync();
+
+//			$this->advance();
 		}
     }
+
+
+	private function setMessage(string $message) {
+		if($this->progressBar) {
+			$this->progressBar->setMessage($message);
+		}
+	}
+
+    private function advance() {
+    	if($this->progressBar) {
+    		$this->progressBar->advance();
+	    }
+    }
+
+	private function finnish() {
+		if($this->progressBar) {
+			$this->progressBar->finnish();
+		}
+	}
 
 }
