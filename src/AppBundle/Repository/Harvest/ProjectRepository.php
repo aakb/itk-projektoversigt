@@ -58,7 +58,7 @@ class ProjectRepository extends BaseRepository {
 									$conditions[] = 'p.isFixedFee = false AND p.isBillable = false';
 									break;
 								case 'fixed':
-									$conditions[] = 'p.isFixedFee = false AND p.isBillable = true';
+									$conditions[] = 'p.isFixedFee = true AND p.isBillable = true';
 									break;
 								case 'time':
 									$conditions[] = 'p.isFixedFee = false AND p.isBillable = true';
