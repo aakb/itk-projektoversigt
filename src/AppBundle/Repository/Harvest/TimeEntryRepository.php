@@ -2,6 +2,8 @@
 
 namespace AppBundle\Repository\Harvest;
 
+use AppBundle\Entity\Harvest\TimeEntry;
+
 /**
  * TimeEntryRepository
  *
@@ -10,4 +12,13 @@ namespace AppBundle\Repository\Harvest;
  */
 class TimeEntryRepository extends BaseRepository
 {
+	public function findAllByProject() {
+		$qb = $this->getEntityManager()->createQueryBuilder();
+
+		$query = $qb->select('te.hours', 'te.billableRate', '(te.hours * te.billableRate) AS total')
+			->from('AppBundle:Harvest\TimeEntry', 'te')
+			->getQuery();
+
+		return $query->getResult();
+	}
 }

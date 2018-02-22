@@ -4,9 +4,12 @@ namespace AppBundle\Entity\Harvest;
 
 use ApiPlatform\Core\Annotation\ApiResource;
 use AppBundle\Traits\ExistingEntity;
+use AppBundle\Traits\OwnedByEntity;
 use AppBundle\Traits\TimestampableEntity;
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\ORM\PersistentCollection;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -14,12 +17,14 @@ use Symfony\Component\Validator\Constraints as Assert;
  *
  * @ApiResource
  *
- * @ORM\Table(name="harvest_client")
+ * @ORM\Table(name="harvest_client", indexes={
+ *  @ORM\Index(name="search_owned_by", columns={"owned_by"}),
+ * })
  * @ORM\Entity(repositoryClass="AppBundle\Repository\Harvest\ClientRepository")
  */
 class Client
 {
-	use TimestampableEntity, ExistingEntity;
+	use TimestampableEntity, ExistingEntity, OwnedByEntity;
 
     /**
      * @var int
@@ -87,6 +92,10 @@ class Client
 		$this->projectAssignments = new ArrayCollection();
 	}
 
+	public function __toString() {
+		return !empty($this->getName) ? '-- No Name --' : $this->getName();
+	}
+
 	/**
 	 * Set id.
 	 *
@@ -112,23 +121,23 @@ class Client
     }
 
 	/**
-	 * @return Project
+	 * @return Collection
 	 */
-	public function getProjects(): Project {
+	public function getProjects(): Collection {
 		return $this->projects;
 	}
 
 	/**
-	 * @return ArrayCollection
+	 * @return Collection
 	 */
-	public function getTimeEntries(): ArrayCollection {
+	public function getTimeEntries(): Collection {
 		return $this->timeEntries;
 	}
 
 	/**
-	 * @return ArrayCollection
+	 * @return Collection
 	 */
-	public function getProjectAssignments(): ArrayCollection {
+	public function getProjectAssignments(): Collection {
 		return $this->projectAssignments;
 	}
 

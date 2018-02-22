@@ -19,10 +19,16 @@ class HarvestApiService extends BaseApiService {
 
 	private $progressBar;
 	private $output;
+	private $accounts;
+	private $baseUrl;
+	private $userAgentHeader;
 
-    public function __construct(Client $client, EntityManager $em)
+    public function __construct(Client $client, EntityManager $em, array $accounts, string $baseUrl, string $userAgentHeader)
     {
     	parent::__construct($client, $em);
+    	$this->accounts = $accounts;
+    	$this->userAgentHeader = $userAgentHeader;
+		$this->baseUrl = $baseUrl;
     }
 
     public function update(OutputInterface $output = null) {
@@ -39,14 +45,27 @@ class HarvestApiService extends BaseApiService {
 		$this->clearSeenOnlastSync();
 	    $this->advance();
 
-    	$this->updateAllEndpoints();
+	    $this->updateAllAccounts();
 
-	    $this->setMessage('Remove all delete entries');
+	    $this->setMessage('Remove all deleted entries');
     	$this->removeDeleted();
-	    $this->advance();
+	    $this->finish();
     }
 
-    private function updateAllEndpoints() {
+    private function updateAllAccounts() {
+		foreach ($this->accounts as $name => $account) {
+			$headers = [
+				'Authorization' => $account['token'],
+				'Harvest-Account-Id' => $account['id'],
+				'Accept' => 'application/json',
+				'User-Agent' => $this->userAgentHeader
+			];
+			$this->client = new Client(array('base_uri' => $this->baseUrl, 'headers' => $headers));
+			$this->updateAllEndpoints($name);
+		}
+    }
+
+    private function updateAllEndpoints(string $accountName) {
     	$endpoints = [
     		'users' => 'AppBundle:Harvest\User',
     		'clients' => 'AppBundle:Harvest\Client',
@@ -55,32 +74,32 @@ class HarvestApiService extends BaseApiService {
 	    ];
 
     	foreach ($endpoints as $endpoint => $entityName) {
-    		$this->updateEndpoint(self::API_BASE_PATH.$endpoint, $endpoint, 'links.next', 'page', 'total_pages', $entityName, $this->progressBar);
+    		$this->updateEndpoint($accountName, self::API_BASE_PATH . $endpoint, $endpoint, 'links.next', 'page', 'total_pages', $entityName, $this->progressBar);
 
     		$this->advance();
 	    }
 
-	    $projects = $this->em->getRepository('AppBundle:Harvest\Project')->findAll();
+	    $projects = $this->em->getRepository('AppBundle:Harvest\Project')->findBy( ['ownedBy' => $accountName ] );
     	$total = count($projects);
     	$count = 1;
 	    foreach ($projects as $project) {
-		    $this->setMessage('Updating assignments for: '.$count.'/'.$total.' projects.');
-		    $this->updateEndpoint(self::API_BASE_PATH.'projects/'.$project->getId().'/task_assignments', 'task_assignments', 'links.next', 'page',
+		    $this->setMessage($accountName.': Updating assignments for: '.$count.'/'.$total.' projects.');
+		    $this->updateEndpoint($accountName, self::API_BASE_PATH.'projects/'.$project->getId().'/task_assignments', 'task_assignments', 'links.next', 'page',
 			    'total_pages','AppBundle:Harvest\TaskAssignment');
-		    $this->updateEndpoint(self::API_BASE_PATH.'projects/'.$project->getId().'/user_assignments', 'user_assignments', 'links.next', 'page',
+		    $this->updateEndpoint($accountName, self::API_BASE_PATH.'projects/'.$project->getId().'/user_assignments', 'user_assignments', 'links.next', 'page',
 			    'total_pages', 'AppBundle:Harvest\UserAssignment');
 
 		    $this->advance();
 		    $count++;
 	    }
 
-	    $users = $this->em->getRepository('AppBundle:Harvest\User')->findAll();
+	    $users = $this->em->getRepository('AppBundle:Harvest\User')->findBy( ['ownedBy' => $accountName ] );
 	    $total = count($users);
 	    $count = 1;
 	    foreach ($users as $user) {
-		    $this->setMessage('Updating assignments for: '.$count.'/'.$total.' users.');
-		    $this->updateEndpoint(self::API_BASE_PATH.'users/'.$user->getId().'/project_assignments', 'project_assignments', 'task_assignments', 'links.next', 'page',
-			    'total_pages','AppBundle:Harvest\ProjectAssignment');
+		    $this->setMessage($accountName.': Updating assignments for: '.$count.'/'.$total.' users.');
+		    $this->updateEndpoint($accountName, self::API_BASE_PATH . 'users/' . $user->getId() . '/project_assignments', 'project_assignments','links.next', 'page',
+			    'total_pages', 'AppBundle:Harvest\ProjectAssignment', $this->progressBar);
 
 		    $this->advance();
 		    $count++;
@@ -92,7 +111,7 @@ class HarvestApiService extends BaseApiService {
 	    ];
 
 	    foreach ($endpoints as $endpoint => $entityName) {
-		    $this->updateEndpoint(self::API_BASE_PATH.$endpoint, $endpoint, $entityName);
+		    $this->updateEndpoint($accountName, self::API_BASE_PATH . $endpoint, $endpoint, 'links.next', 'page', 'total_pages', $entityName, $this->progressBar);
 
 		    $this->advance();
 	    }
@@ -114,7 +133,7 @@ class HarvestApiService extends BaseApiService {
 	    foreach ($entityNames as $entityName) {
 	        $this->em->getRepository( $entityName )->clearSeenOnLastSync();
 
-//		    $this->advance();
+		    $this->advance();
 	    }
     }
 
@@ -134,7 +153,7 @@ class HarvestApiService extends BaseApiService {
 		foreach ($entityNames as $entityName) {
 	        $this->em->getRepository( $entityName )->deleteAllNotSeenOnLastSync();
 
-//			$this->advance();
+			$this->advance();
 		}
     }
 
@@ -151,9 +170,9 @@ class HarvestApiService extends BaseApiService {
 	    }
     }
 
-	private function finnish() {
+	private function finish() {
 		if($this->progressBar) {
-			$this->progressBar->finnish();
+			$this->progressBar->finish();
 		}
 	}
 

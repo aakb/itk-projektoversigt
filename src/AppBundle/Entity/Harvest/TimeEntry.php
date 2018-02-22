@@ -3,19 +3,25 @@
 namespace AppBundle\Entity\Harvest;
 
 use AppBundle\Traits\ExistingEntity;
+use AppBundle\Traits\OwnedByEntity;
 use Doctrine\ORM\Mapping as ORM;
 use AppBundle\Traits\TimestampableEntity;
 use AppBundle\Entity\Harvest\Client as Client;
+use ApiPlatform\Core\Annotation\ApiResource;
 
 /**
  * TimeEntry
  *
- * @ORM\Table(name="harvest_time_entry")
+ * @ApiResource
+ *
+ * @ORM\Table(name="harvest_time_entry", indexes={
+ *  @ORM\Index(name="search_owned_by", columns={"owned_by"}),
+ * })
  * @ORM\Entity(repositoryClass="AppBundle\Repository\Harvest\TimeEntryRepository")
  */
 class TimeEntry
 {
-	use TimestampableEntity, ExistingEntity;
+	use TimestampableEntity, ExistingEntity, OwnedByEntity;
 
     /**
      * @var int

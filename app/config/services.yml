@@ -38,3 +38,6 @@ services:
         arguments:
             $client: '@eight_points_guzzle.client.harvest_api'
             $em: '@doctrine.orm.default_entity_manager'
+            $accounts: '%harvest_accounts%'
+            $baseUrl: '%harvest_base_url%'
+            $userAgentHeader: '%harvest_user_agent%'

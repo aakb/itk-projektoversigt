@@ -25,7 +25,7 @@ use Doctrine\Common\Annotations\AnnotationReader;
 abstract class BaseApiService
 {
 	protected $em;
-	private $client;
+	protected $client;
 
 	public function __construct(Client $client, EntityManager $em)
 	{
@@ -33,9 +33,9 @@ abstract class BaseApiService
 		$this->em = $em;
 	}
 
-	protected function updateEndpoint(string $apiPath, string $jsonPath, string $nextUrlPath, string $pageNumberPath, string $totalPageNumberPath, string $entityName, ProgressBar $progressBar = null) {
+	protected function updateEndpoint(string $accountName, string $apiPath, string $jsonPath, string $nextUrlPath, string $pageNumberPath, string $totalPageNumberPath, string $entityName, ProgressBar $progressBar = null) {
 		$res = $this->getPagedData($this->client, $apiPath, $jsonPath, $nextUrlPath, $pageNumberPath, $totalPageNumberPath);
-		$this->updateEntities($entityName, $res['records']);
+		$this->updateEntities($entityName, $res['records'], $accountName);
 
 		if($res['totalPageNumber'] > 1) {
 			$client = $this->client;
@@ -47,7 +47,7 @@ abstract class BaseApiService
 
 			$requests = function($pageUrls) use ($client) {
 				foreach ($pageUrls as $url) {
-					yield $client->get($url);
+					yield $client->getAsync($url);
 				}
 			};
 
@@ -58,26 +58,26 @@ abstract class BaseApiService
 			$p = \GuzzleHttp\Promise\each_limit(
 				$requests($pageUrls),
 				20,
-				function(ResponseInterface $response, $index) use (&$page, $total, $jsonPath, $entityName, $progressBar) {
+				function(ResponseInterface $response, $index) use (&$page, $total, $jsonPath, $entityName, $progressBar, $accountName) {
 					// https://github.com/8p/GuzzleBundle/issues/48
 					$response->getBody()->rewind();
 
 					$content = new JsonObject($response->getBody()->getContents());
 					$records = $content->get( '$.' . $jsonPath . '[*]');
 
-					$this->updateEntities($entityName, $records);
+					$this->updateEntities($entityName, $records, $accountName);
 
 					if($progressBar) {
 						$progressBar->advance();
-						$progressBar->setMessage( $jsonPath . ': ' . $page . '/' . $total . ' pages fetched.' );
+						$progressBar->setMessage($accountName . ': ' . $jsonPath . ': ' . $page . '/' . $total . ' pages fetched.' );
 					}
 
 					$page++;
 				},
-				function($reason, $index) use (&$page, $total, $jsonPath, $entityName, $progressBar) {
+				function($reason, $index) use (&$page, $total, $jsonPath, $entityName, $progressBar, $accountName) {
 					$page++;
 
-					$progressBar->setMessage( $jsonPath . ': ' . $page . '/' . $total . ' pages failed.' );
+					$progressBar->setMessage( $accountName . ': ' . $jsonPath . ': ' . $page . '/' . $total . ' pages failed.' );
 				}
 			);
 			$p->wait();
@@ -113,31 +113,36 @@ abstract class BaseApiService
         throw new \Exception('$next_url cannot be empty');
     }
 
-    protected function updateEntities($entityName, $records) {
-		$ids = array_column($records, 'id');
-		$result = $this->em->getRepository( $entityName )->findBy( ['id' => $ids] );
+    protected function updateEntities($entityName, $records, $accountName) {
+	    $this->em->getConnection()->getConfiguration()->setSQLLogger(null);
 
-		$entities = [];
-		foreach ($result as $item) {
-			$entities[$item->getId()] = $item;
+		if(is_array($records)) {
+			$ids    = array_column( $records, 'id' );
+			$result = $this->em->getRepository( $entityName )->findBy( [ 'id' => $ids, 'ownedBy' => $accountName ] );
+
+			$entities = [];
+			foreach ( $result as $item ) {
+				$entities[ $item->getId() ] = $item;
+			}
+
+			foreach ( $records as $record ) {
+				$entity = array_key_exists( $record['id'], $entities ) ? $entities[ $record['id'] ] : null;
+
+				if ( ! $entity ) {
+					$entityInfo = $this->em->getClassMetadata( $entityName );
+					$entity     = $entityInfo->newInstance();
+				}
+
+				$this->updateEntity( $entity, $record, $accountName );
+				$this->em->persist( $entity );
+			}
+
+			$this->em->flush();
+			$this->em->clear();
 		}
-
-	    foreach ( $records as $record ) {
-		    $entity = array_key_exists($record['id'], $entities) ? $entities[$record['id']] : null;
-
-		    if ( ! $entity ) {
-			    $entityInfo = $this->em->getClassMetadata( $entityName );
-			    $entity     = $entityInfo->newInstance();
-		    }
-
-		    $this->updateEntity( $entity, $record );
-		    $this->em->persist( $entity );
-	    }
-
-	    $this->em->flush();
     }
 
-    protected function updateEntity($entity, $data)
+    protected function updateEntity($entity, $data, $accountName)
     {
         $accessor  = PropertyAccess::createPropertyAccessor();
         $reflect   = new \ReflectionClass($entity);
@@ -146,7 +151,7 @@ abstract class BaseApiService
         foreach ($data as $prop => $value) {
             $prop = $this->convertToCamelCase($prop);
 
-            if ($value && $reflect->hasProperty($prop) && $accessor->isWritable($entity, $prop)) {
+            if ($value !== null && $reflect->hasProperty($prop) && $accessor->isWritable($entity, $prop)) {
                 $docInfos = $docReader->getPropertyAnnotations($reflect->getProperty($prop));
 
                 if(property_exists($docInfos[0], 'type')) {
@@ -162,9 +167,12 @@ abstract class BaseApiService
                 	if(property_exists($docInfos[0], 'mappedBy')) {
 		                $col = new ArrayCollection();
 		                foreach ($value as $v) {
-                			$col->add($this->em->getRepository($docInfos[0]->targetEntity)->find($v['id']));
+		                	$relation = $this->em->getRepository($docInfos[0]->targetEntity)->find($v['id']);
+		                	if($relation) {
+                			    $col->add($relation);
+			                }
 		                }
-		                $value = $col;
+		                $value = empty($col) ? null : $col;
 	                } elseif(property_exists($docInfos[0], 'inversedBy')) {
                 	    $value = $this->em->getRepository($docInfos[0]->targetEntity)->find($value['id']);
 	                } else {
@@ -172,12 +180,18 @@ abstract class BaseApiService
 	                }
                 }
 
-                $accessor->setValue($entity, $prop, $value);
+                if($value !== null) {
+	                $accessor->setValue($entity, $prop, $value);
+                }
             }
         }
 
 	    if($accessor->isWritable($entity, 'seenOnLastSync')) {
 		    $accessor->setValue($entity, 'seenOnLastSync', true);
+	    }
+
+	    if($accessor->isWritable($entity, 'ownedBy')) {
+		    $accessor->setValue($entity, 'ownedBy', $accountName);
 	    }
     }
 

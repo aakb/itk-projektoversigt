@@ -2,7 +2,9 @@
 
 namespace AppBundle\Entity\Harvest;
 
+use ApiPlatform\Core\Annotation\ApiResource;
 use AppBundle\Traits\ExistingEntity;
+use AppBundle\Traits\OwnedByEntity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use AppBundle\Traits\TimestampableEntity;
@@ -10,12 +12,16 @@ use AppBundle\Traits\TimestampableEntity;
 /**
  * Invoice
  *
- * @ORM\Table(name="harvest_invoice")
+ * @ApiResource
+ *
+ * @ORM\Table(name="harvest_invoice", indexes={
+ *  @ORM\Index(name="search_owned_by", columns={"owned_by"}),
+ * })
  * @ORM\Entity(repositoryClass="AppBundle\Repository\Harvest\InvoiceRepository")
  */
 class Invoice
 {
-	use TimestampableEntity, ExistingEntity;
+	use TimestampableEntity, ExistingEntity, OwnedByEntity;
 
     /**
      * @var int

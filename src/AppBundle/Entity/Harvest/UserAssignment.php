@@ -3,19 +3,25 @@
 namespace AppBundle\Entity\Harvest;
 
 use AppBundle\Traits\ExistingEntity;
+use AppBundle\Traits\OwnedByEntity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use AppBundle\Traits\TimestampableEntity;
+use ApiPlatform\Core\Annotation\ApiResource;
 
 /**
  * UserAssignment
  *
- * @ORM\Table(name="harvest_user_assignment")
+ * @ApiResource
+ *
+ * @ORM\Table(name="harvest_user_assignment", indexes={
+ *  @ORM\Index(name="search_owned_by", columns={"owned_by"}),
+ * })
  * @ORM\Entity(repositoryClass="AppBundle\Repository\Harvest\UserAssignmentRepository")
  */
 class UserAssignment
 {
-	use TimestampableEntity, ExistingEntity;
+	use TimestampableEntity, ExistingEntity, OwnedByEntity;
 
     /**
      * @var int

@@ -3,20 +3,26 @@
 namespace AppBundle\Entity\Harvest;
 
 use AppBundle\Traits\ExistingEntity;
+use AppBundle\Traits\OwnedByEntity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\ManyToMany;
 use AppBundle\Traits\TimestampableEntity;
+use ApiPlatform\Core\Annotation\ApiResource;
 
 /**
  * Project
  *
- * @ORM\Table(name="harvest_project")
+ * @ApiResource
+ *
+ * @ORM\Table(name="harvest_project", indexes={
+ *  @ORM\Index(name="search_owned_by", columns={"owned_by"}),
+ * })
  * @ORM\Entity(repositoryClass="AppBundle\Repository\Harvest\ProjectRepository")
  */
 class Project
 {
-	use TimestampableEntity, ExistingEntity;
+	use TimestampableEntity, ExistingEntity, OwnedByEntity;
 
     /**
      * @var int
@@ -695,6 +701,26 @@ class Project
     public function getEndsOn()
     {
         return $this->endsOn;
+    }
+
+	/**
+	 * Get billing type
+	 *
+	 * @return string
+	 */
+    public function getType()
+    {
+    	if($this->isFixedFee && $this->isBillable) {
+    		$type = 'Fixed Fee';
+	    } elseif(!$this->isFixedFee && !$this->isBillable) {
+		    $type = 'Non-Billable';
+	    } elseif(!$this->isFixedFee && $this->isBillable) {
+			$type = 'Time & Materials';
+	    } else {
+		    $type = '-- Unknown --';
+	    }
+
+	    return $type;
     }
 
 }
