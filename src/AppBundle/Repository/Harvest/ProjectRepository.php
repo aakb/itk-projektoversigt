@@ -27,7 +27,7 @@ class ProjectRepository extends BaseRepository {
 		$qb->select( 'p', 'c' )
 		   ->from( 'AppBundle:Harvest\Project', 'p' )
 		   ->leftJoin( 'p.client', 'c' )
-		   ->orderBy( 'p.ownedBy', 'ASC' );
+		   ->orderBy( 'p.name', 'ASC' );
 
 		if ( $data ) {
 			$parameters = [];
