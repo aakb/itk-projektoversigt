@@ -42,29 +42,32 @@ class ProjectRepository extends BaseRepository {
 							$qb->andWhere( 'p.' . $key . ' LIKE :' . $key );
 							$parameters[ $key ] = '%' . $value . '%';
 							break;
+						case 'client':
+							$qb->andWhere( 'c.name LIKE :' . $key );
+							$parameters[ $key ] = '%' . $value . '%';
+							break;
 						case 'isActive':
 							$qb->andWhere( 'p.' . $key . ' = :' . $key );
 							$parameters[ $key ] = true;
 							break;
 						case 'type':
-							foreach ( $value as $v ) {
-								switch ( $v ) {
-									case 'non_billable':
-										$qb->andWhere( 'p.isFixedFee = :non_billable1 AND p.isBillable = :non_billable2' );
-										$parameters['non_billable1'] = false;
-										$parameters['non_billable2'] = false;
-										break;
-									case 'fixed':
-										$qb->andWhere( 'p.isFixedFee = :fixed1 AND p.isBillable = :fixed2' );
-										$parameters['fixed1'] = true;
-										$parameters['fixed2'] = true;
-										break;
-									case 'time':
-										$qb->andWhere( 'p.isFixedFee = :time1 AND p.isBillable = :time2' );
-										$parameters['time1'] = false;
-										$parameters['time2'] = true;
-										break;
-								}
+							$expression = $qb->expr()->orX();
+							$conditions = [];
+							switch ( $value ) {
+								case 'non_billable':
+									$conditions[] = 'p.isFixedFee = false AND p.isBillable = false';
+									break;
+								case 'fixed':
+									$conditions[] = 'p.isFixedFee = false AND p.isBillable = true';
+									break;
+								case 'time':
+									$conditions[] = 'p.isFixedFee = false AND p.isBillable = true';
+									break;
+							}
+
+							if ( ! empty( $conditions ) ) {
+								$expression->addMultiple( $conditions );
+								$qb->andWhere( $expression );
 							}
 					}
 				}

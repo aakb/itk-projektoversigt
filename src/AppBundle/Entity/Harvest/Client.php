@@ -19,6 +19,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  *
  * @ORM\Table(name="harvest_client", indexes={
  *  @ORM\Index(name="search_owned_by", columns={"owned_by"}),
+ *  @ORM\Index(name="search_name", columns={"name"}),
  * })
  * @ORM\Entity(repositoryClass="AppBundle\Repository\Harvest\ClientRepository")
  */

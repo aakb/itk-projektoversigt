@@ -29,10 +29,12 @@ class RapportController extends Controller {
 		}
 
 		$form = $this->createFormBuilder()
-		             ->add( 'name', TextType::class, [ 'required' => false, 'label' => 'Navn' ] )
+		             ->add( 'name', TextType::class, [ 'required' => false, 'label' => 'Projekt Navn' ] )
+		             ->add( 'client', TextType::class, [ 'required' => false, 'label' => 'Finansiering' ] )
 		             ->add( 'ownedBy', ChoiceType::class, [ 'choices' => $choices, 'expanded' => true, 'multiple' => true, 'label' => 'Kilde' ] )
-		             ->add( 'isActive', ChoiceType::class, [ 'choices' => ['Ja' => true], 'expanded' => true, 'multiple' => true, 'label' => 'Aktive' ] )
-		             ->add( 'type', ChoiceType::class, [ 'choices' => ['Fixed Fee' => 'fixed', 'Time & Materials' => 'time', 'Non-Billable' => 'non_billable'], 'expanded' => true, 'multiple' => true, 'label' => 'Type' ] )
+		             ->add( 'isActive', ChoiceType::class, [ 'choices' => ['Aktivt' => true], 'expanded' => true, 'multiple' => true, 'label' => 'Status' ] )
+		             ->add( 'type', ChoiceType::class, [ 'choices' => ['Fixed Fee' => 'fixed', 'Time & Materials' => 'time', 'Non-Billable' => 'non_billable', 'Alle' => 'alle'],
+		                                                 'expanded' => true, 'multiple' => false, 'label' => 'Type' ] )
 		             ->add( 'save', SubmitType::class, [ 'label' => 'Søg' ] )
 		             ->getForm();
 

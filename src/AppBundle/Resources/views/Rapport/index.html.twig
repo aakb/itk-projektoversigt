@@ -8,19 +8,29 @@
       <div class="col-sm p-3">
         {{ form_row(searchForm.name) }}
       </div>
+      <div class="col-sm p-3">
+        {{ form_row(searchForm.client) }}
+      </div>
     </div>
     <div class="row">
       <div class="col-sm p-3">
         {{ form_row(searchForm.ownedBy) }}
       </div>
       <div class="col-sm p-3">
-        {{ form_row(searchForm.isActive) }}
+        {{ form_row(searchForm.type) }}
       </div>
       <div class="col-sm p-3">
-        {{ form_row(searchForm.type) }}
+        {{ form_row(searchForm.isActive) }}
       </div>
     </div>
     {{ form_end(searchForm) }}
+
+    <div class="row">
+      <div class="col-sm p-3">
+        {{ form_row(searchForm.ownedBy) }}
+      </div>
+    </div>
+
     <div class="row">
       <div class="col-sm">
         <table class="table table-sm">
@@ -28,8 +38,6 @@
             <th>Aktivt</th>
             <th>Projekt Navn</th>
             <th>Finansiering</th>
-            <th>Billable</th>
-            <th>Fixed fee</th>
             <th>Type</th>
             <th>Kilde</th>
           </tr>
@@ -38,8 +46,6 @@
               <td>{{ project.isActive ? '<i class="fas fa-check"></i>'}}</td>
               <td>{{ project.name }}</td>
               <td>{{ project.client }}</td>
-              <td>{{ project.isBillable ? '<i class="fas fa-check"></i>'}}</td>
-              <td>{{ project.isFixedFee ? '<i class="fas fa-check"></i>'}}</td>
               <td>{{ project.type }}</td>
               <td>{{ project.ownedBy }}</td>
             </tr>

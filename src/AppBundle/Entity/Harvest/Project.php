@@ -17,6 +17,10 @@ use ApiPlatform\Core\Annotation\ApiResource;
  *
  * @ORM\Table(name="harvest_project", indexes={
  *  @ORM\Index(name="search_owned_by", columns={"owned_by"}),
+ *  @ORM\Index(name="search_name", columns={"name"}),
+ *  @ORM\Index(name="search_is_billable", columns={"is_billable"}),
+ *  @ORM\Index(name="search_is_fixed_fee", columns={"is_fixed_fee"}),
+ *  @ORM\Index(name="search_is_active", columns={"is_active"}),
  * })
  * @ORM\Entity(repositoryClass="AppBundle\Repository\Harvest\ProjectRepository")
  */
