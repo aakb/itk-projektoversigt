@@ -17,7 +17,7 @@ use Symfony\Component\Cache\Adapter\TraceableAdapter;
 class HarvestRateLimitProvider implements RateLimitProvider {
 	private $cache;
 
-	public function __construct( TraceableAdapter $cache_adapter ) {
+	public function __construct( $cache_adapter ) {
 		$this->cache = $cache_adapter;
 	}
 
