@@ -8,6 +8,7 @@
 
 namespace AppBundle\Service;
 
+use Concat\Http\Middleware\RateLimiter;
 use Doctrine\ORM\EntityManager;
 use GuzzleHttp\Client;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -22,13 +23,15 @@ class HarvestApiService extends BaseApiService {
 	private $accounts;
 	private $baseUrl;
 	private $userAgentHeader;
+	private $rateLimitProvider;
 
-    public function __construct(Client $client, EntityManager $em, array $accounts, string $baseUrl, string $userAgentHeader)
+    public function __construct(HarvestRateLimitProvider $rateLimitProvider, EntityManager $em, array $accounts, string $baseUrl, string $userAgentHeader)
     {
-    	parent::__construct($client, $em);
+    	parent::__construct($em);
     	$this->accounts = $accounts;
     	$this->userAgentHeader = $userAgentHeader;
 		$this->baseUrl = $baseUrl;
+		$this->rateLimitProvider = $rateLimitProvider;
     }
 
     public function update(OutputInterface $output = null) {
@@ -60,7 +63,10 @@ class HarvestApiService extends BaseApiService {
 				'Accept' => 'application/json',
 				'User-Agent' => $this->userAgentHeader
 			];
-			$this->client = new Client(array('base_uri' => $this->baseUrl, 'headers' => $headers));
+
+			$this->handlerStack->push(new RateLimiter($this->rateLimitProvider));
+
+			$this->client = new Client(array('base_uri' => $this->baseUrl, 'headers' => $headers, 'handler' => $this->handlerStack));
 			$this->updateAllEndpoints($name);
 		}
     }

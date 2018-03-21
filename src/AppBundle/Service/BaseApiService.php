@@ -10,9 +10,15 @@ namespace AppBundle\Service;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\PromiseInterface;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Handler\CurlHandler;
+use Concat\Http\Middleware\RateLimiter;
 use Psr\Http\Message\ResponseInterface;
 
 use JsonPath\JsonObject;
@@ -26,11 +32,14 @@ abstract class BaseApiService
 {
 	protected $em;
 	protected $client;
+	protected $handlerStack;
 
-	public function __construct(Client $client, EntityManager $em)
+	public function __construct(EntityManager $em)
 	{
-		$this->client = $client;
 		$this->em = $em;
+
+		$this->handlerStack = HandlerStack::create(new CurlHandler());
+		$this->handlerStack->push(Middleware::retry($this->retryDecider(), $this->retryDelay()));
 	}
 
 	protected function updateEndpoint(string $accountName, string $apiPath, string $jsonPath, string $nextUrlPath, string $pageNumberPath, string $totalPageNumberPath, string $entityName, ProgressBar $progressBar = null) {
@@ -205,5 +214,60 @@ abstract class BaseApiService
 
         return $str;
     }
+
+	private function retryDecider()
+	{
+		return function (
+			$retries,
+			Request $request,
+			Response $response = null,
+			RequestException $exception = null
+		) {
+			// Limit the number of retries to 5
+			if ($retries >= 5) {
+				return false;
+			}
+
+			// Retry connection exceptions
+			if ($exception instanceof ConnectException) {
+				return true;
+			}
+
+			if ($response) {
+				// Retry for throttled response
+				if ($response->getStatusCode() === 429 ) {
+					return true;
+				}
+			}
+
+			return false;
+		};
+	}
+
+	/**
+	 * Retry strategy
+	 *
+	 * @return Closure
+	 */
+	private function retryDelay()
+	{
+		return function (
+			$retries,
+			Response $response = null,
+			RequestException $exception = null
+		) {
+
+			if($response->getHeader('Retry-After')) {
+				$wait = $response->getHeader('Retry-After')[0];
+				$wait = (int) $wait;
+
+				if($wait) {
+					return $wait * 1000;
+				}
+			}
+
+			return $retries * 1000;
+		};
+	}
 
 }

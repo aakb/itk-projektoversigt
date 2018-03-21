@@ -36,8 +36,12 @@ services:
 
     AppBundle\Service\HarvestApiService:
         arguments:
-            $client: '@eight_points_guzzle.client.harvest_api'
+            $rateLimitProvider: '@AppBundle\Service\HarvestRateLimitProvider'
             $em: '@doctrine.orm.default_entity_manager'
             $accounts: '%harvest_accounts%'
             $baseUrl: '%harvest_base_url%'
             $userAgentHeader: '%harvest_user_agent%'
+
+    AppBundle\Service\HarvestRateLimitProvider:
+        arguments:
+            $cache_adapter: '@app.cache.ratelimit'

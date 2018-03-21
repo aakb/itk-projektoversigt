@@ -34,6 +34,11 @@ framework:
     assets: ~
     php_errors:
         log: true
+    cache:
+        pools:
+            app.cache.ratelimit:
+                adapter: cache.adapter.redis
+                public: true
 
 # Twig Configuration
 twig:
