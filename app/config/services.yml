@@ -45,3 +45,7 @@ services:
     AppBundle\Service\HarvestRateLimitProvider:
         arguments:
             $cache_adapter: '@app.cache.ratelimit'
+
+    AppBundle\Controller\RapportController:
+        arguments:
+            $cache_adapter: '@app.cache.ratelimit'
