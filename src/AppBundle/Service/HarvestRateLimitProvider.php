@@ -74,7 +74,7 @@ class HarvestRateLimitProvider implements RateLimitProvider {
 		// https://help.getharvest.com/api-v2/introduction/overview/general/#rate-limiting
 
 		// The doc says to return in microseconds, the code says seconds :-/
-		return 0.15;
+		return 0.14;
 		//return (float) 150000;
 	}
 
