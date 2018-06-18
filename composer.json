@@ -39,6 +39,7 @@
         "skyscanner/jsonpath": "^1.0",
         "stof/doctrine-extensions-bundle": "^1.3",
         "symfony/cache": "^4.0",
+        "symfony/lock": "^4.1",
         "symfony/monolog-bundle": "^3.1.0",
         "symfony/swiftmailer-bundle": "^2.3.10",
         "symfony/symfony": "^3.3",
